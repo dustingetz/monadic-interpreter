@@ -7,7 +7,7 @@
 from __future__ import division
 import math, operator as op
 
-from monads import error_m, err
+from pymonads.error import error_m, err
 
 
 interp_m = error_m # cont_t state_t error_t identity_m
