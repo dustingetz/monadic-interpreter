@@ -27,6 +27,8 @@ class Env(dict):
         return self if var in self else self.outer.find(var)
 
 
+# all eval_* functions are monadic
+
 def eval_symbol(x, env):
     assert env
     return ok(env.find(x)[x])
