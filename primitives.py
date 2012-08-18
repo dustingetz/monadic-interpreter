@@ -1,8 +1,9 @@
 from __future__ import division
 import math, operator as op
 
+from interp_m import *
 
-py_primitive_fns = {
+_py_primitive_fns = {
     '+':op.add,
     '-':op.sub,
     '*':op.mul,
@@ -26,19 +27,24 @@ py_primitive_fns = {
     'symbol?':lambda x: isa(x, Symbol)
 }
 
-special_forms = {
+_special_forms = {
     'assert': lambda p, errmsg: ok(None) if p else err(errmsg)
 }
+
+
 
 def lift(fn): #lift is a misnomer, its not a real monadic lift. what is it?
     "inlining this fn seems to break python?"
     return lambda *args: ok(fn(*args))
 
-def add_globals(env):
+
+def _add_globals(env):
     "Add some Scheme standard procedures to an environment."
     env.update(vars(math)) # sin, sqrt, ...
-    for sym, fn in py_primitive_fns.iteritems():
+    for sym, fn in _py_primitive_fns.iteritems():
         env[sym] = lift(fn)
-    for sym, fn in special_forms.iteritems():
+    for sym, fn in _special_forms.iteritems():
         env[sym] = fn
     return env
+
+global_env = _add_globals({})

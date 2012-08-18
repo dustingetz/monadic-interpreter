@@ -1,33 +1,17 @@
 from parser import Symbol
 from primitives import *
+from interp_m import *
 
-from pymonads.error import error_m, err
-
-
-
-interp_m = error_m # cont_t state_t error_t identity_m
-
-ok = interp_m.unit
-err = err #needs to be lifted if the monad stack changes
-bind = interp_m.bind
-fmap = interp_m.fmap
-seq = interp_m.seq
-mmap = interp_m.map
-
-
-
-# here be le monads!
-
-def lift(fn): #lift is a misnomer, its not a real monadic lift. what is it?
-    "inlining this fn seems to break python?"
-    return lambda *args: ok(fn(*args))
-
-# all eval_* functions are monadic - return mvs
+# naming conventions in leiu of types:
+# 'mv', 'mproc', ... : monadic value in interp_m
+# 'x': simple value
+# 'xs', 'mvs': lists
+# all eval_* functions return monadic values
 
 def eval_symbol(x):
     # immutable environment
-    assert x in py_primitive_fns, "unknown symbol %s"%x
-    return ok(lift(py_primitive_fns[x]))
+    assert x in global_env, "unknown symbol %s"%x
+    return ok(global_env[x])
 
 def eval_literal(x):
     return ok(x)
@@ -43,103 +27,42 @@ def eval_if(x):
     mbranch = fmap(_doif, eval(test))
     return bind(mbranch, lambda branch: eval(branch))
 
-def eval_set(x):
-    assert False, "unimplemented: set"
-    (_, var, exp) = x
-    def _doset(val):
-        assert env
-        env.find(var)[var] = val
-        return None
-    return fmap(_doset, eval(exp))
-
-def eval_define(x):
-    assert False, "unimplemented: define"
-    (_, var, exp) = x
-    def _dodefine(val):
-        env[var] = val
-        return None
-    return fmap(_dodefine, eval(exp))
-
-def eval_lambda(x):
-    (_, vars, exp) = x
-    return err("unimplemented: lambda")
-    #return ok(lambda *args: eval(exp, Env(vars, args, env)))
-
-
-def eval_begin(x):
-    exprs = x[1:]
-
-    # this code is a recursive monad comprehension, it composes the plumbing
-    # such that errors short circuit etc, but discards the passed in value
-    # and just evaluates the next expression. the return value is monadic -
-    # the last expression evaluated.
-    #
-    # version if there wasn't a monad:
-    #
-    #   for exp in x[1:]:
-    #     val = eval(exp, env)
-    #   return val
-    #
-    def _dobegin(exp, exprs): # -> mv
-        mfirst = eval(exp)
-        if not exprs: return mfirst
-        return bind(mfirst, lambda _: _dobegin(exprs[0], exprs[1:]))
-    return _dobegin(exprs[0], exprs[1:])
-
 def eval_proc(x):
     mvs = map(eval, x)
     mproc, margs = mvs.pop(0), mvs
     args = seq(margs)
-    print mproc, args
+    #print mproc, args
     return bind(mproc, lambda proc: proc(*args))
 
 
 
 
-
 def eval(x):
-
     if isinstance(x, Symbol):
         return eval_symbol(x)
-
     elif not isinstance(x, list):
         return eval_literal(x)
-
     elif x[0] == 'quote':
         return eval_quote(x)
-
     elif x[0] == 'if':             # (if test conseq alt)
         return eval_if(x)
-
-#    elif x[0] == 'set!':           # (set! var exp)
-#        return eval_set(x)
-
-#    elif x[0] == 'define':         # (define var exp)
-#        return eval_define(x)
-
-#    elif x[0] == 'lambda':         # (lambda (var*) exp)
-#        return eval_lambda(x)
-
-    elif x[0] == 'begin':          # (begin exp*)
-        return eval_begin(x)
-
     else:                          # (proc exp*)
         return eval_proc(x)
-
-
-
-
-
 
 
 def test():
 
     tests = [
-        #("(quote (testing 1 (2.0) -3.14e159))", ok(['testing', 1, [2.0], -3.14e159])),
-        ("(+ 2 2)", ok(4)),
-        ("(+ (* 2 100) (* 1 10))", ok(210)),
-        ("(if (> 6 5) (+ 1 1) (+ 2 2))", ok(2)),
-        ("(if (< 6 5) (+ 1 1) (+ 2 2))", ok(4)),
+        ("(+ 2 2)", ok(4))
+        ,("(+ (* 2 100) (* 1 10))", ok(210))
+        ,("(if (> 6 5) (+ 1 1) (+ 2 2))", ok(2))
+        ,("(if (< 6 5) (+ 1 1) (+ 2 2))", ok(4))
+
+        ,("(quote (testing 1 (2.0) -3.14e159))", ok(['testing', 1, [2.0], -3.14e159]))
+
+        ,("(assert 1 2)", ok(None))
+        ,("(assert 0 2)", err(2))
+
         # ("(define x 3)", ok(None)), ("x", ok(3)), ("(+ x x)", ok(6)),
         # ("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", ok(3)),
         # ("((lambda (x) (+ x x)) 5)", ok(10)),
@@ -168,13 +91,10 @@ def test():
         # ("(riff-shuffle (list 1 2 3 4 5 6 7 8))", ok([1, 5, 2, 6, 3, 7, 4, 8])),
         # ("((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  ok([1, 3, 5, 7, 2, 4, 6, 8])),
         # ("(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", ok([1,2,3,4,5,6,7,8]))
-        # ,("(assert 1 2)", ok(None))
-        # ,("(assert 0 2)", err(2))
         ]
 
 
     from parser import parse
-    #global_env = add_globals(Env())
 
     fails = 0
     for (x, expected) in tests:
