@@ -59,8 +59,7 @@ def test():
 
         ,("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159])
 
-        #,("(assert 1 2)", None)
-        #,("(assert 0 2)", err(2))
+        ,("(assert 1 2)", None)
 
         # ("(define x 3)", ok(None)), ("x", ok(3)), ("(+ x x)", ok(6)),
         # ("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", ok(3)),
@@ -99,7 +98,8 @@ def test():
     fails = 0
     for (x, expected) in tests:
         mresult = eval(parse(x))
-        val = mresult(global_env)[0] # apply the env and get the result
+        val = mresult[0]
+        #val = mresult(global_env)[0] # apply the env and get the result
         succeeded = (val == expected)
         if not succeeded:
             fails += 1

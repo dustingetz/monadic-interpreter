@@ -1,9 +1,9 @@
-from pymonads.environment import *
+from pymonads.error import *
 
-interp_m = env_m
+interp_m = error_m
 
 ok = interp_m.unit
-#err = err #needs to be lifted if the monad stack changes
+err = interp_m.err #needs to be lifted if the monad stack changes
 bind = interp_m.bind
 fmap = interp_m.fmap
 seq = interp_m.seq
