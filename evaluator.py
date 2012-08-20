@@ -9,9 +9,7 @@ from interp_m import *
 # all eval_* functions return monadic values
 
 def eval_symbol(x):
-    # immutable environment
-    assert x in global_env, "unknown symbol %s"%x
-    return ok(global_env[x])
+    return envGet(x)
 
 def eval_literal(x):
     return ok(x)
@@ -29,11 +27,35 @@ def eval_if(x):
 
 def eval_proc(exprs):
     m_xs = mmap(eval, exprs) # return type: \env -> [xs]
-    #print m_xs, m_xs({})
-
     def _apply(proc, args):
         return proc(*args)
     return bind(m_xs, lambda xs: _apply(xs[0], xs[1:]))
+
+def eval_define(x):
+    (_, var, exp) = x
+    return bind( eval(exp), lambda val: envSet(var, val))
+    # return bind( envBound(var),     lambda bound:
+    #        bind( ok(None) if not bound
+    #              else err("can't rebind symbol `%s`"%var), lambda _:
+    #        bind( eval(exp),         lambda val:
+    #              envSet(var, val)   )))
+
+def eval_set(x):
+    (_, var, exp) = x
+    return bind( envBound(var),     lambda bound:
+           bind( ok(None) if bound
+                 else err("can't set unbound symbol `%s`"%var), lambda _:
+           bind( eval(exp),         lambda val:
+                 envSet(var, val)   )))
+
+def eval_begin(x):
+    exprs = x[1:]
+    def _dobegin(exp, exprs): # -> mv
+        mfirst = eval(exp)
+        if not exprs: return mfirst
+        return bind(mfirst, lambda _: _dobegin(exprs[0], exprs[1:]))
+    return _dobegin(exprs[0], exprs[1:])
+    #return mmap(eval, exprs)
 
 
 def eval(x):
@@ -41,11 +63,22 @@ def eval(x):
         return eval_symbol(x)
     elif not isinstance(x, list):
         return eval_literal(x)
+
+    # these cannot be monadic special forms due to strict evaluation
+    # with lazy evaluation, these can be injected into the environment
     elif x[0] == 'quote':
         return eval_quote(x)
-    elif x[0] == 'if':             # (if test conseq alt)
+    elif x[0] == 'if':
         return eval_if(x)
-    else:                          # (proc exp*)
+    elif x[0] == 'set!':
+        return eval_set(x)
+    elif x[0] == 'define':
+        return eval_define(x)
+    # elif x[0] == 'lambda':
+    #     return eval_lambda(x)
+    elif x[0] == 'begin':
+        return eval_begin(x)
+    else:
         return eval_proc(x)
 
 
@@ -56,14 +89,18 @@ def test():
         ,("(+ (* 2 100) (* 1 10))", 210)
         ,("(if (> 6 5) (+ 1 1) (+ 2 2))", 2)
         ,("(if (< 6 5) (+ 1 1) (+ 2 2))", 4)
-
         ,("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159])
 
+        #error
         ,("(assert 1 2)", None)
 
-        # ("(define x 3)", ok(None)), ("x", ok(3)), ("(+ x x)", ok(6)),
-        # ("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", ok(3)),
-        # ("((lambda (x) (+ x x)) 5)", ok(10)),
+        #environment
+        ,("(define x 3)", None)
+        ,("x", 3)
+        ,("(+ x x)", 6)
+
+        ,("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", 3)
+        #,("((lambda (x) (+ x x)) 5)", 10)
         # ("(define twice (lambda (x) (* 2 x)))", ok(None)), ("(twice 5)", ok(10)),
         # ("(define compose (lambda (f g) (lambda (x) (f (g x)))))", ok(None)),
         # ("((compose list twice) 5)", ok([10])),
@@ -96,13 +133,18 @@ def test():
     from repl import to_string
 
     fails = 0
+    newenv = global_env
     for (x, expected) in tests:
-        mresult = eval(parse(x))
-        val = mresult(global_env)[0][0] # apply the env and get the result
+        mval = eval(parse(x))
+        ival = envRunIn(mval, newenv) # => ((42, {...}), None)
+
+        val = getVal(ival)
+        newenv = getEnv(ival) # tests share an environment
         succeeded = (val == expected)
+
         if not succeeded:
             fails += 1
-            print x, '=>', to_string(val)
+            print x, '=>', to_string(val), getErr(ival)
             print '\tFAIL!!!  Expected', expected
 
     print '%s %d out of %d tests fail.' % ('*'*45, fails, len(tests))

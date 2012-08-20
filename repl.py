@@ -54,9 +54,12 @@ def to_string(exp):
 
 def repl(prompt='lis.py> '):
     "A prompt-read-eval-print loop."
+    sessionEnv = global_env.copy()
     while True:
         mval = eval(parse(raw_input(prompt)))
-        val = mval(global_env) # => ((42, {}), None)
+        ival = mval(sessionEnv) # => ((42, {}), None)
 
-        if getErr(val): print "Error:", getErr(val)
-        else: print to_string(getVal(val))
+        if getErr(ival): print "Error:", getErr(ival)
+        else: print to_string(getVal(ival))
+
+        sessionEnv = getEnv(ival)
