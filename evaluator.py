@@ -27,14 +27,13 @@ def eval_if(x):
     mbranch = fmap(_doif, eval(test))
     return bind(mbranch, lambda branch: eval(branch))
 
-def eval_proc(x):
-    mvs = map(eval, x)
-    mproc, margs = mvs.pop(0), mvs
-    args = seq(margs)
-    #print mproc, args
-    return bind(mproc, lambda proc: proc(*args))
+def eval_proc(exprs):
+    m_xs = mmap(eval, exprs) # return type: \env -> [xs]
+    #print m_xs, m_xs({})
 
-
+    def _apply(proc, args):
+        return proc(*args)
+    return bind(m_xs, lambda xs: _apply(xs[0], xs[1:]))
 
 
 def eval(x):
@@ -53,15 +52,15 @@ def eval(x):
 def test():
 
     tests = [
-        ("(+ 2 2)", ok(4))
-        ,("(+ (* 2 100) (* 1 10))", ok(210))
-        ,("(if (> 6 5) (+ 1 1) (+ 2 2))", ok(2))
-        ,("(if (< 6 5) (+ 1 1) (+ 2 2))", ok(4))
+        ("(+ 2 2)", 4)
+        ,("(+ (* 2 100) (* 1 10))", 210)
+        ,("(if (> 6 5) (+ 1 1) (+ 2 2))", 2)
+        ,("(if (< 6 5) (+ 1 1) (+ 2 2))", 4)
 
-        ,("(quote (testing 1 (2.0) -3.14e159))", ok(['testing', 1, [2.0], -3.14e159]))
+        ,("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159])
 
-        ,("(assert 1 2)", ok(None))
-        ,("(assert 0 2)", err(2))
+        #,("(assert 1 2)", None)
+        #,("(assert 0 2)", err(2))
 
         # ("(define x 3)", ok(None)), ("x", ok(3)), ("(+ x x)", ok(6)),
         # ("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", ok(3)),
@@ -95,14 +94,16 @@ def test():
 
 
     from parser import parse
+    from repl import to_string
 
     fails = 0
     for (x, expected) in tests:
-        result = eval(parse(x))
-        succeeded = (result == expected)
+        mresult = eval(parse(x))
+        val = mresult(global_env)[0] # apply the env and get the result
+        succeeded = (val == expected)
         if not succeeded:
             fails += 1
-            print x, '=>', to_string(result[0])
+            print x, '=>', to_string(val)
             print '\tFAIL!!!  Expected', expected
 
     print '%s %d out of %d tests fail.' % ('*'*45, fails, len(tests))

@@ -24,9 +24,9 @@ py_primitive_fns = {
     'cdr':lambda x:x[1:],
     'append':op.add,
     'list':lambda *x:list(x),
-    'list?': lambda x:isa(x,list),
+    'list?': lambda x:isinstance(x,list),
     'null?':lambda x:x==[],
-    'symbol?':lambda x: isa(x, Symbol)
+    'symbol?':lambda x: isinstance(x, Symbol)
 }
 
 special_forms = {
@@ -50,7 +50,7 @@ def add_globals(env):
 
 def to_string(exp):
     "Convert a Python object back into a Lisp-readable string."
-    return '('+' '.join(map(to_string, exp))+')' if isa(exp, list) else str(exp)
+    return '('+' '.join(map(to_string, exp))+')' if isinstance(exp, list) else str(exp)
 
 def repl(prompt='lis.py> '):
     "A prompt-read-eval-print loop."
