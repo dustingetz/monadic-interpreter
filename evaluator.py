@@ -98,8 +98,7 @@ def test():
     fails = 0
     for (x, expected) in tests:
         mresult = eval(parse(x))
-        val = mresult[0]
-        #val = mresult(global_env)[0] # apply the env and get the result
+        val = mresult(global_env)[0][0] # apply the env and get the result
         succeeded = (val == expected)
         if not succeeded:
             fails += 1

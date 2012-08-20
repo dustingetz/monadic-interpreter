@@ -55,5 +55,8 @@ def to_string(exp):
 def repl(prompt='lis.py> '):
     "A prompt-read-eval-print loop."
     while True:
-        val = eval(parse(raw_input(prompt)), global_env)
-        if val is not None: print to_string(val)
+        mval = eval(parse(raw_input(prompt)))
+        val = mval(global_env) # => ((42, {}), None)
+
+        if getErr(val): print "Error:", getErr(val)
+        else: print to_string(getVal(val))
