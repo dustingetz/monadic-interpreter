@@ -51,11 +51,6 @@ def eval_begin(x):
         return bind(mfirst, lambda _: _dobegin(exprs[0], exprs[1:]))
     return _dobegin(exprs[0], exprs[1:])
 
-def assoc(dict1, dict2):
-    newDict = dict1.copy()
-    newDict.update(dict2)
-    return newDict
-
 def eval_lambda(x):
     "functions are evaluated in the lexical scope where they were defined"
     (_, vars, exp) = x

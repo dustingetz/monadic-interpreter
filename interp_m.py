@@ -1,5 +1,6 @@
 from pymonads.error import *
 from pymonads.environment import *
+from pymonads.fptools import *
 
 interp_m = Environment_t(error_m)
 
