@@ -4,22 +4,34 @@ from evaluator import eval
 from parser import parse
 from repl import to_string
 from primitives import add_globals
+from interp_m import *
+
+
+def keydiff(dict1, dict2):
+    return set(dict1).difference(set(dict2))
 
 
 class TestEvaluator(unittest.TestCase):
 
-    env = add_globals({})
+    def setUp(self):
+        # forms within a repl session can mutate globals
+        self.env = add_globals({})
 
-    def checkLine(self, line, expected):
-        mval = eval(parse(line))
+    def evalRepl(self, form):
+        mval = eval(parse(form))
         ival = envRunIn(mval, self.env) # => ((42, {...}), None)
-        val = getVal(ival)
-        self.env = getEnv(ival) # tests share an environment
-        self.assertTrue(val == expected)
+        self.env = getEnv(ival) # tests allowed to change global namespace
+        return ival
 
-    def checkAll(self, tests):
-        f = self.checkLine
-        map(lambda t: f(t[0], t[1]), tests)
+    def checkForm(self, form, expected):
+        ival = self.evalRepl(form)
+        self.env = getEnv(ival) # tests share an environment
+        self.assertTrue(getVal(ival) == expected)
+
+    def checkForms(self, tests):
+        checkForm = self.checkForm
+        map(lambda t: checkForm(t[0], t[1]), tests)
+
 
     def test_identity(self):
         tests = [
@@ -29,10 +41,10 @@ class TestEvaluator(unittest.TestCase):
             ,("(if (< 6 5) (+ 1 1) (+ 2 2))", 4)
             ,("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159])
             ]
-        self.checkAll(tests)
+        self.checkForms(tests)
 
     def test_error(self):
-        self.checkLine("(assert 1 2)", None)
+        self.checkForm("(assert 1 2)", None)
 
     def test_env(self):
         tests = [
@@ -67,7 +79,24 @@ class TestEvaluator(unittest.TestCase):
             ,("(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", [1,2,3,4,5,6,7,8])
              ]
 
-        self.checkAll(tests)
+        self.checkForms(tests)
+
+    def test_stack_frames(self):
+        envA = self.env
+        ival = self.evalRepl("((lambda (a1) (* 2 a1)) 5)")
+        envB = self.env
+        self.assertEqual(keydiff(envB, envA), set([]), "stack not unwound")
+
+    def test_define(self):
+        envA = self.env
+        self.evalRepl("(define f (lambda (a1) (* 2 a1)))")
+        self.evalRepl("(define x 3)")
+        self.evalRepl("(define y (+ 1 x))")
+        envB = self.env
+        self.assertEqual(keydiff(envB, envA), set(['f', 'x', 'y']))
+
+suite = unittest.TestSuite()
+suite.addTest(unittest.makeSuite(TestEvaluator))
 
 if __name__=="__main__":
     unittest.main(exit=False)

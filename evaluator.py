@@ -85,4 +85,5 @@ def eval(x):
 
 if __name__=="__main__":
     import unittest
-    unittest.main(exit=False)
+    import test_evaluator
+    unittest.TextTestRunner().run(test_evaluator.suite)
