@@ -79,6 +79,16 @@ class TestEvaluator(unittest.TestCase):
 
         self.checkForms(tests)
 
+    def test_regression_1(self):
+        "this blows the stack. don't know why."
+        self.evalRepl("(define twice (lambda (x) (* 2 x)))")
+        self.evalRepl("(define compose (lambda (f g) (lambda (x) (f (g x)))))")
+        self.evalRepl("(define repeat (lambda (f) (compose f f)))")
+        try:
+            self.evalRepl("((repeat (repeat twice)) 5)")
+        except RuntimeError, why:
+            self.fail(why)
+
     def test_stack_frames(self):
         envA = self.env
         ival = self.evalRepl("((lambda (a1) (* 2 a1)) 5)")
