@@ -90,9 +90,15 @@ class TestEvaluator(unittest.TestCase):
 
     def test_stack_frames_closures(self):
         envA = self.r.env
-        ival = self.r.evalForm("((lambda (a1) (* 2 a1)) 5)")
+        self.checkForm("""
+           (begin
+             (define a 1)
+             (define b 2)
+             (define f (lambda () (+ a b)))
+             (f))
+        """, 3)
         envB = self.r.env
-        self.assertEqual(keydiff(envB, envA), set([]), "stack not unwound")
+        self.assertEqual(keydiff(envB, envA), set(['f']), "stack not unwound")
 
     def test_define(self):
         envA = self.r.env
