@@ -2,7 +2,7 @@ import unittest
 
 from evaluator import eval
 from parser import parse
-from repl import add_globals
+from repl import Repl
 from interp_m import *
 
 
@@ -13,18 +13,11 @@ def keydiff(dict1, dict2):
 class TestEvaluator(unittest.TestCase):
 
     def setUp(self):
-        # forms within a repl session can mutate globals
-        self.env = add_globals({})
-
-    def evalRepl(self, form):
-        mval = eval(parse(form))
-        ival = envRunIn(mval, self.env) # => ((42, {...}), None)
-        self.env = getEnv(ival) # tests allowed to change global namespace
-        return ival
+        # multiple forms in a single test share mutable global env
+        self.r = Repl()
 
     def checkForm(self, form, expected):
-        ival = self.evalRepl(form)
-        self.env = getEnv(ival) # tests share an environment
+        ival = self.r.evalForm(form)
         self.assertTrue(getVal(ival) == expected)
 
     def checkForms(self, tests):
@@ -81,26 +74,32 @@ class TestEvaluator(unittest.TestCase):
 
     def test_regression_1(self):
         "this blows the stack. don't know why."
-        self.evalRepl("(define twice (lambda (x) (* 2 x)))")
-        self.evalRepl("(define compose (lambda (f g) (lambda (x) (f (g x)))))")
-        self.evalRepl("(define repeat (lambda (f) (compose f f)))")
+        self.r.evalForm("(define twice (lambda (x) (* 2 x)))")
+        self.r.evalForm("(define compose (lambda (f g) (lambda (x) (f (g x)))))")
+        self.r.evalForm("(define repeat (lambda (f) (compose f f)))")
         try:
-            self.evalRepl("((repeat (repeat twice)) 5)")
+            self.r.evalForm("((repeat (repeat twice)) 5)")
         except RuntimeError, why:
             self.fail(why)
 
     def test_stack_frames(self):
-        envA = self.env
-        ival = self.evalRepl("((lambda (a1) (* 2 a1)) 5)")
-        envB = self.env
+        envA = self.r.env
+        ival = self.r.evalForm("((lambda (a1) (* 2 a1)) 5)")
+        envB = self.r.env
+        self.assertEqual(keydiff(envB, envA), set([]), "stack not unwound")
+
+    def test_stack_frames_closures(self):
+        envA = self.r.env
+        ival = self.r.evalForm("((lambda (a1) (* 2 a1)) 5)")
+        envB = self.r.env
         self.assertEqual(keydiff(envB, envA), set([]), "stack not unwound")
 
     def test_define(self):
-        envA = self.env
-        self.evalRepl("(define f (lambda (a1) (* 2 a1)))")
-        self.evalRepl("(define x 3)")
-        self.evalRepl("(define y (+ 1 x))")
-        envB = self.env
+        envA = self.r.env
+        self.r.evalForm("(define f (lambda (a1) (* 2 a1)))")
+        self.r.evalForm("(define x 3)")
+        self.r.evalForm("(define y (+ 1 x))")
+        envB = self.r.env
         self.assertEqual(keydiff(envB, envA), set(['f', 'x', 'y']))
 
 suite = unittest.TestSuite()

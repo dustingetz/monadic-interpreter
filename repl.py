@@ -37,8 +37,13 @@ _special_forms = {
 
 
 
-def add_globals(env):
+def to_string(exp):
+    "Convert a Python object back into a Lisp-readable string."
+    return '('+' '.join(map(to_string, exp))+')' if isinstance(exp, list) else str(exp)
+
+def _buildDefaultEnv():
     "Add some Scheme standard procedures to an environment."
+    env = {}
     env.update(vars(math)) # sin, sqrt, ...
     for sym, fn in _py_primitive_fns.iteritems():
         env[sym] = liftEnv(fn)
@@ -46,16 +51,26 @@ def add_globals(env):
         env[sym] = fn
     return env
 
-def to_string(exp):
-    "Convert a Python object back into a Lisp-readable string."
-    return '('+' '.join(map(to_string, exp))+')' if isinstance(exp, list) else str(exp)
 
-def repl(env, prompt='lis.py> '):
+class Repl:
+    _defaultEnv = _buildDefaultEnv()
+    def resetEnv(self):
+        self.env = self._defaultEnv.copy()
+
+    def __init__(self):
+        self.resetEnv()
+
+    def evalForm(self, form):
+        mval = eval(parse(form))
+        ival = envRunIn(mval, self.env) # => ((42, {...}), None)
+        self.env = getEnv(ival)
+        return ival
+
+
+def repl(prompt='lis.py> '):
+    r = Repl()
     while True:
-        mval = eval(parse(raw_input(prompt)))
-        ival = mval(env) # => ((42, {}), None)
+        ival = r.evalForm(raw_input(prompt))
 
         if getErr(ival): print "Error:", getErr(ival)
         else: print to_string(getVal(ival))
-
-        env = getEnv(ival)
