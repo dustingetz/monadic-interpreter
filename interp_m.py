@@ -24,6 +24,11 @@ def getErr(mv): return mv[1]
 def envAsk(env):
     return error_m.ok((env, env))
 
+def envReplace(newenv):
+    def _(env):
+        return error_m.ok((None, newenv))
+    return _
+
 def envBound(sym):
     def _(env):
         return error_m.ok((sym in env, env))
@@ -39,6 +44,13 @@ def envSetAll(pairs):
 def envSet(var, val): return envSetAll([(var,val)])
 
 def envRunIn(mv, env): return mv(env)
+
+def envLocal(mv, localEnv):
+    return bind( envAsk,                 lambda curEnv: # save the env ("push")
+           bind( envReplace(localEnv),   lambda _:      # restore the subenv
+           bind( mv,                     lambda retval: # evaluate
+           bind( envReplace(curEnv),     lambda _:      # restore the old env ("pop")
+                 ok(retval)              ))))           # return
 
 def envGet(sym):
     #return bind( envAsk, lambda env: ok(env[sym]))

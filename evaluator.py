@@ -52,10 +52,11 @@ def eval_begin(x):
     return _dobegin(exprs[0], exprs[1:])
 
 def eval_lambda(x):
+    "functions are evaluated in the lexical scope where they were defined"
     (_, vars, exp) = x
-    def proc(*args):
-        return bind(envSetAll(zip(vars, args)), lambda _: eval(exp))
-    return ok(proc)
+    def mkProc(lexicalEnv):
+        return (lambda *args: envLocal(eval(exp), lexicalEnv))
+    return bind( envAsk, lambda lexicalEnv: ok(mkProc(lexicalEnv)))
 
 
 
