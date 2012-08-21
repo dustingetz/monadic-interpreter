@@ -2,10 +2,10 @@ from __future__ import division
 import math, operator as op
 
 from evaluator import *
+from interp_m import *
 from parser import *
 
-
-py_primitive_fns = {
+_py_primitive_fns = {
     '+':op.add,
     '-':op.sub,
     '*':op.mul,
@@ -29,24 +29,22 @@ py_primitive_fns = {
     'symbol?':lambda x: isinstance(x, Symbol)
 }
 
-special_forms = {
+# special forms are monadic functions
+_special_forms = {
     'assert': lambda p, errmsg: ok(None) if p else err(errmsg)
+    ,'dumpenv': lambda: envAsk
 }
 
-def lift(fn): #lift is a misnomer, its not a real monadic lift. what is it?
-    "inlining this fn seems to break python?"
-    return lambda *args: ok(fn(*args))
+
 
 def add_globals(env):
     "Add some Scheme standard procedures to an environment."
     env.update(vars(math)) # sin, sqrt, ...
-    for sym, fn in py_primitive_fns.iteritems():
-        env[sym] = lift(fn)
-    for sym, fn in special_forms.iteritems():
+    for sym, fn in _py_primitive_fns.iteritems():
+        env[sym] = liftEnv(fn)
+    for sym, fn in _special_forms.iteritems():
         env[sym] = fn
     return env
-
-
 
 def to_string(exp):
     "Convert a Python object back into a Lisp-readable string."

@@ -2,8 +2,7 @@ import unittest
 
 from evaluator import eval
 from parser import parse
-from repl import to_string
-from primitives import add_globals
+from repl import add_globals
 from interp_m import *
 
 
@@ -56,7 +55,6 @@ class TestEvaluator(unittest.TestCase):
             ,("((compose list twice) 5)", [10])
             ,("(define repeat (lambda (f) (compose f f)))", None)
             ,("((repeat twice) 5)", 20)
-            #,("((repeat (repeat twice)) 5)", 80)
             ,("(define fact (lambda (n) (if (<= n 1) 1 (* n (fact (- n 1))))))", None)
             ,("(fact 3)", 6)
             ,("(fact 50)", 30414093201713378043612608166064768844377641568960512000000000000)
