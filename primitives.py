@@ -30,11 +30,12 @@ _py_primitive_fns = {
 # special forms are monadic functions
 _special_forms = {
     'assert': lambda p, errmsg: ok(None) if p else err(errmsg)
+    ,'dumpenv': lambda: envAsk
 }
 
 
 
-def _add_globals(env):
+def add_globals(env):
     "Add some Scheme standard procedures to an environment."
     env.update(vars(math)) # sin, sqrt, ...
     for sym, fn in _py_primitive_fns.iteritems():
@@ -42,5 +43,3 @@ def _add_globals(env):
     for sym, fn in _special_forms.iteritems():
         env[sym] = fn
     return env
-
-global_env = _add_globals({})

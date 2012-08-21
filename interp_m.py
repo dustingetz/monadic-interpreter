@@ -29,12 +29,14 @@ def envBound(sym):
         return error_m.ok((sym in env, env))
     return _
 
-def envSet(var, val):
+def envSetAll(pairs):
     def _(env):
         newenv = env.copy()
-        newenv.update([(var, val)])
+        newenv.update(pairs)
         return error_m.ok((None, newenv))
     return _
+
+def envSet(var, val): return envSetAll([(var,val)])
 
 def envRunIn(mv, env): return mv(env)
 

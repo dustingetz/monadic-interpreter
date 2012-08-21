@@ -52,14 +52,12 @@ def to_string(exp):
     "Convert a Python object back into a Lisp-readable string."
     return '('+' '.join(map(to_string, exp))+')' if isinstance(exp, list) else str(exp)
 
-def repl(prompt='lis.py> '):
-    "A prompt-read-eval-print loop."
-    sessionEnv = global_env.copy()
+def repl(env, prompt='lis.py> '):
     while True:
         mval = eval(parse(raw_input(prompt)))
-        ival = mval(sessionEnv) # => ((42, {}), None)
+        ival = mval(env) # => ((42, {}), None)
 
         if getErr(ival): print "Error:", getErr(ival)
         else: print to_string(getVal(ival))
 
-        sessionEnv = getEnv(ival)
+        env = getEnv(ival)

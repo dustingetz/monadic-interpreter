@@ -7,4 +7,4 @@
 
 if __name__=="__main__":
     import repl
-    repl()
+    repl.repl()
