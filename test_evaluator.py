@@ -2,7 +2,7 @@ import unittest
 
 from evaluator import eval
 from parser import parse
-from repl import Repl
+from repl import Repl, to_string
 from interp_m import *
 
 
@@ -17,13 +17,16 @@ class TestEvaluator(unittest.TestCase):
         self.r = Repl()
 
     def checkForm(self, form, expected):
-        ival = self.r.evalForm(form)
-        self.assertTrue(getVal(ival) == expected)
+        try:
+            ival = self.r.evalForm(form)
+            val, err = getVal(ival), getErr(ival)
+            self.assertTrue(val == expected, "%s => (%s, %s)"%(to_string(form), val, err))
+        except Exception, why:
+            self.fail("%s => %s"%(form, why))
 
     def checkForms(self, tests):
         checkForm = self.checkForm
         map(lambda t: checkForm(t[0], t[1]), tests)
-
 
     def test_identity(self):
         tests = [
@@ -48,9 +51,6 @@ class TestEvaluator(unittest.TestCase):
             ,("((compose list twice) 5)", [10])
             ,("(define repeat (lambda (f) (compose f f)))", None)
             ,("((repeat twice) 5)", 20)
-            ,("(define fact (lambda (n) (if (<= n 1) 1 (* n (fact (- n 1))))))", None)
-            ,("(fact 3)", 6)
-            ,("(fact 50)", 30414093201713378043612608166064768844377641568960512000000000000)
             ,("(define abs (lambda (n) ((if (> n 0) + -) 0 n)))", None)
             ,("(list (abs -3) (abs 0) (abs 3))", [3, 0, 3])
             ,("""(define combine (lambda (f)
@@ -72,8 +72,13 @@ class TestEvaluator(unittest.TestCase):
 
         self.checkForms(tests)
 
+    def test_deep_recursion(self):
+        self.checkForm("(define fact (lambda (n) (if (<= n 1) 1 (* n (fact (- n 1))))))", None)
+        self.checkForm("(fact 35)", 10333147966386144929666651337523200000000)
+        #self.checkForm("(fact 50)", 30414093201713378043612608166064768844377641568960512000000000000)
+
     def test_regression_1(self):
-        "this blows the stack. don't know why."
+        "blew the stack before lexical-scope'd procs"
         self.r.evalForm("(define twice (lambda (x) (* 2 x)))")
         self.r.evalForm("(define compose (lambda (f g) (lambda (x) (f (g x)))))")
         self.r.evalForm("(define repeat (lambda (f) (compose f f)))")
@@ -81,6 +86,12 @@ class TestEvaluator(unittest.TestCase):
             self.r.evalForm("((repeat (repeat twice)) 5)")
         except RuntimeError, why:
             self.fail(why)
+
+    def test_regression_2(self):
+        "proc var with same name as bound global should take precedence"
+        self.checkForm("(define inc (lambda (x) (+ 1 x)))", None)
+        self.checkForm("(define x 3)", None)
+        self.checkForm("((lambda (x) (+ x (inc x))) 5)", 11)
 
     def test_stack_frames(self):
         envA = self.r.env

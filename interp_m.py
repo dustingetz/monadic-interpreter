@@ -29,31 +29,30 @@ def envReplace(newenv):
         return error_m.ok((None, newenv))
     return _
 
+def envUpdate(subEnv):
+    def _(env):
+        newenv = env.copy()
+        newenv.update(subEnv)
+        return error_m.ok((None, newenv))
+    return _
+
 def envBound(sym):
     def _(env):
         return error_m.ok((sym in env, env))
     return _
 
-def envSetAll(pairs):
-    def _(env):
-        newenv = env.copy()
-        newenv.update(pairs)
-        return error_m.ok((None, newenv))
-    return _
-
-def envSet(var, val): return envSetAll([(var,val)])
+def envSet(var, val): return envUpdate(dict([(var, val)]))
 
 def envRunIn(mv, env): return mv(env)
 
 def envLocal(mv, localEnv):
     return bind( envAsk,                 lambda curEnv: # save the env ("push")
-           bind( envReplace(localEnv),   lambda _:      # restore the subenv
+           bind( envUpdate(localEnv),    lambda _:      # apply the subenv
            bind( mv,                     lambda retval: # evaluate
            bind( envReplace(curEnv),     lambda _:      # restore the old env ("pop")
                  ok(retval)              ))))           # return
 
 def envGet(sym):
-    #return bind( envAsk, lambda env: ok(env[sym]))
     return bind( envAsk, lambda env:
                  ok(env[sym]) if sym in env
                               else err("referenced unbound symbol %s"%sym))

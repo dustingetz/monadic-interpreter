@@ -33,15 +33,15 @@ def eval_proc(exprs):
 
 def eval_define(x):
     (_, var, exp) = x
-    return bind( eval(exp), lambda val: envSet(var, val))
+    return bind( eval(exp), lambda val: envUpdate({var:val}))
 
 def eval_set(x):
     (_, var, exp) = x
-    return bind( envBound(var),     lambda bound:
+    return bind( envBound(var),        lambda bound:
            bind( ok(None) if bound
                  else err("can't set unbound symbol `%s`"%var), lambda _:
-           bind( eval(exp),         lambda val:
-                 envSet(var, val)   )))
+           bind( eval(exp),            lambda val:
+                 envUpdate({var:val})  )))
 
 def eval_begin(x):
     exprs = x[1:]
@@ -51,11 +51,17 @@ def eval_begin(x):
         return bind(mfirst, lambda _: _dobegin(exprs[0], exprs[1:]))
     return _dobegin(exprs[0], exprs[1:])
 
+def assoc(dict1, dict2):
+    newDict = dict1.copy()
+    newDict.update(dict2)
+    return newDict
+
 def eval_lambda(x):
     "functions are evaluated in the lexical scope where they were defined"
     (_, vars, exp) = x
     def mkProc(lexicalEnv):
-        return (lambda *args: envLocal(eval(exp), lexicalEnv))
+        return (lambda *args:
+              envLocal( eval(exp), assoc(lexicalEnv, dict(zip(vars, args)))))
     return bind( envAsk, lambda lexicalEnv: ok(mkProc(lexicalEnv)))
 
 
