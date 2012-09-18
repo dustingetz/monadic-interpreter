@@ -1,8 +1,12 @@
 from pymonads.error import *
 from pymonads.environment import *
+from pymonads.continuation import *
 from pymonads.fptools import *
 
 interp_m = Environment_t(error_m)
+# error is on the inside, because env operations may fail - unbound symbol.
+# is it possible to represent an env error with error on the outside?
+#
 
 def liftEnv(fn): #inlining this fn seems to break python?
     return lambda *args: ok(fn(*args))
